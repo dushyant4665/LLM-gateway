@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LLM Gateway — Developer Console</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- Top Navigation -->
+  <header class="navbar">
+    <div class="brand">
+      <span class="brand-badge">GATEWAY</span>
+      <div class="brand-titles">
+        <h1>LLM Gateway Console</h1>
+        <p>Virtual Keys • Hard Budget Limits • Fallback Proxy</p>
+      </div>
+    </div>
+    <div class="gateway-health" id="gateway-health">
+      <span class="health-dot" id="health-dot"></span>
+      <span id="health-label">Checking gateway...</span>
+    </div>
+  </header>
+
+  <!-- Main Grid Container -->
+  <main class="container">
+    <!-- Top Row: Key Provisioning & Live Spend Tracker -->
+    <div class="grid-row-2">
+      <!-- Panel 1: Key Generator -->
+      <section class="card">
+        <div class="card-title-bar">
+          <h2>1. Issue Virtual API Key</h2>
+          <span class="badge badge-neutral">Provisioning</span>
+        </div>
+        <p class="card-subtitle">
+          Generate an isolated virtual key bounded by a USD spending limit. Raw master credentials remain on the server.
+        </p>
+
+        <form id="key-form" class="form-layout">
+          <label for="budget-input">Spending Budget Cap (USD)</label>
+          <div class="input-action-row">
+            <span class="currency-symbol">$</span>
+            <input
+              type="number"
+              id="budget-input"
+              min="0.01"
+              step="0.01"
+              value="1.00"
+              required
+            />
+            <button type="submit" id="generate-key-btn" class="btn btn-primary">
+              Generate Key
+            </button>
+          </div>
+        </form>
+
+        <div id="new-key-panel" class="key-callout hidden">
+          <div class="callout-header">New Key Generated</div>
+          <div class="key-clipboard-row">
+            <code id="new-key-display" class="code-display"></code>
+            <button id="copy-key-btn" class="btn btn-sm">Copy</button>
+            <button id="attach-key-btn" class="btn btn-sm btn-accent">Use in Console</button>
+          </div>
+          <p class="callout-footer">
+            Key is stored in the database. Use it as <code>Authorization: Bearer &lt;key&gt;</code>.
+          </p>
+        </div>
+      </section>
+
+      <!-- Panel 2: Spend & Token Analytics -->
+      <section class="card">
+        <div class="card-title-bar">
+          <h2>2. Spend & Token Analytics</h2>
+          <span class="badge badge-neutral">GET /api/usage</span>
+        </div>
+        <p class="card-subtitle">
+          Query real-time budget consumption, token counts, and remaining allowance for any virtual key.
+        </p>
+
+        <div class="form-layout">
+          <label for="usage-key-input">Virtual API Key</label>
+          <div class="input-action-row">
+            <input
+              type="text"
+              id="usage-key-input"
+              placeholder="rk_live_..."
+              spellcheck="false"
+            />
+            <button id="inspect-usage-btn" class="btn btn-secondary">
+              Inspect
+            </button>
+          </div>
+        </div>
+
+        <div id="usage-stats-container" class="stats-panel hidden">
+          <!-- Budget Meter -->
+          <div class="budget-meter-box">
+            <div class="meter-meta">
+              <span>Spent: <strong id="val-spent">$0.000000</strong></span>
+              <span>Budget: <strong id="val-budget">$0.00</strong></span>
+            </div>
+            <div class="progress-track">
+              <div id="progress-bar" class="progress-fill" style="width: 0%;"></div>
+            </div>
+            <div class="meter-meta-sub">
+              <span id="val-percent">0.0% used</span>
+              <span id="val-remaining">Remaining: $0.00</span>
+            </div>
+          </div>
+
+          <!-- Metrics Matrix -->
+          <div class="metrics-grid">
+            <div class="metric-cell">
+              <span class="metric-label">Total Requests</span>
+              <span class="metric-num" id="metric-requests">0</span>
+            </div>
+            <div class="metric-cell">
+              <span class="metric-label">Total Tokens</span>
+              <span class="metric-num" id="metric-total-tokens">0</span>
+            </div>
+            <div class="metric-cell">
+              <span class="metric-label">Prompt Tokens</span>
+              <span class="metric-num" id="metric-in-tokens">0</span>
+            </div>
+            <div class="metric-cell">
+              <span class="metric-label">Completion Tokens</span>
+              <span class="metric-num" id="metric-out-tokens">0</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Bottom Row: Interactive Chat Proxy Playground -->
+    <section class="card playground-panel">
+      <div class="card-title-bar">
+        <h2>3. Chat Proxy Playground</h2>
+        <span class="badge badge-neutral">POST /api/chat</span>
+      </div>
+      <p class="card-subtitle">
+        Execute completions through the gateway proxy. Test normal completions, budget limits, and automated fallback when the provider is down.
+      </p>
+
+      <div class="playground-layout">
+        <!-- Request Column -->
+        <div class="play-column">
+          <div class="form-layout">
+            <label for="chat-key-input">Active Virtual Key</label>
+            <input
+              type="text"
+              id="chat-key-input"
+              placeholder="rk_live_..."
+              spellcheck="false"
+              required
+            />
+          </div>
+
+          <div class="form-layout">
+            <label for="chat-model-select">Target Model</label>
+            <select id="chat-model-select">
+              <option value="openai/gpt-oss-20b">openai/gpt-oss-20b (Default)</option>
+              <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile</option>
+              <option value="llama-3.1-8b-instant">llama-3.1-8b-instant</option>
+              <option value="mixtral-8x7b-32768">mixtral-8x7b-32768</option>
+              <option value="invalid-model-for-fallback-test">invalid-model (Test Fallback)</option>
+            </select>
+          </div>
+
+          <div class="form-layout">
+            <label for="chat-prompt">User Prompt</label>
+            <textarea
+              id="chat-prompt"
+              rows="4"
+              placeholder="Type your test prompt..."
+            >Explain what an LLM Gateway is and why production teams need one.</textarea>
+          </div>
+
+          <div class="play-action-row">
+            <button id="send-request-btn" class="btn btn-primary">
+              Send Request
+            </button>
+            <span id="play-status-msg" class="action-status-text hidden">Proxying...</span>
+          </div>
+        </div>
+
+        <!-- Response Column -->
+        <div class="play-column">
+          <div class="response-header-row">
+            <label>Gateway Output</label>
+            <div id="play-badges" class="badges-row"></div>
+          </div>
+
+          <div id="chat-response-viewer" class="response-box">
+            <span class="placeholder-msg">Run a completion request to inspect proxy response.</span>
+          </div>
+
+          <!-- Telemetry Bar -->
+          <div id="telemetry-box" class="telemetry-bar hidden">
+            <div class="tel-item">
+              <span class="tel-lbl">HTTP Status:</span>
+              <span id="tel-http" class="tel-val">200 OK</span>
+            </div>
+            <div class="tel-item">
+              <span class="tel-lbl">Roundtrip:</span>
+              <span id="tel-latency" class="tel-val">-- ms</span>
+            </div>
+            <div class="tel-item">
+              <span class="tel-lbl">Tokens:</span>
+              <span id="tel-tokens" class="tel-val">--</span>
+            </div>
+            <div class="tel-item">
+              <span class="tel-lbl">Est. Cost:</span>
+              <span id="tel-cost" class="tel-val">--</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Developer Integration Snippet -->
+    <section class="card">
+      <div class="card-title-bar">
+        <h2>4. Backend API Integration (cURL Reference)</h2>
+        <span class="badge badge-neutral">Client Example</span>
+      </div>
+      <p class="card-subtitle">
+        Copy-pasteable HTTP command for downstream services to communicate with this gateway.
+      </p>
+
+      <div class="snippet-wrapper">
+        <pre><code id="curl-code-snippet">curl -X POST http://localhost:3000/api/chat \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <YOUR_KEY>" \
+  -d '{
+    "model": "openai/gpt-oss-20b",
+    "messages": [{"role": "user", "content": "Hello from backend client"}]
+  }'</code></pre>
+        <button id="copy-curl-btn" class="btn btn-sm btn-secondary">Copy Command</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>Minimal LLM Gateway Architecture • Node.js / Express / PostgreSQL / Prisma</p>
+  </footer>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

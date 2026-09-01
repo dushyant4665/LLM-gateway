@@ -1,0 +1,32 @@
+// Prisma schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model ApiKey {
+  id        Int        @id @default(autoincrement())
+  key       String     @unique
+  budget    Float      // maximum spend allowed (in USD)
+  spent     Float      @default(0) // amount spent so far
+  createdAt DateTime   @default(now())
+  usageLogs UsageLog[]
+}
+
+model UsageLog {
+  id            Int      @id @default(autoincrement())
+  apiKeyId      Int
+  apiKey        ApiKey   @relation(fields: [apiKeyId], references: [id])
+  model         String
+  inputTokens   Int
+  outputTokens  Int
+  totalTokens   Int
+  estimatedCost Float
+  createdAt     DateTime @default(now())
+}
+
