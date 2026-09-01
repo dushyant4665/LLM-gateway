@@ -19,10 +19,10 @@ Built as a take-home assignment.
 
 ```
 rentok/
-├── public/               # Minimal developer dashboard (UI)
+├── frontend/             # Developer console (UI)
 │   ├── index.html
-│   ├── style.css
-│   └── app.js
+│   ├── css/style.css
+│   └── js/app.js
 ├── src/
 │   ├── controllers/
 │   │   ├── chat.js       # POST /api/chat — proxy + budget + logging

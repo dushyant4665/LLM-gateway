@@ -6,7 +6,7 @@
 - **Used For**:
   - Scaffolding the initial Express application boilerplate and Prisma database schema.
   - Generating test suites using Node.js native test runner (`node:test`) and `supertest` with `require.cache` mocking.
-  - Designing the lightweight developer UI dashboard (`public/`).
+  - Designing the lightweight developer console UI (`frontend/`).
   - Drafting system documentation and cURL usage examples.
 
 ---
