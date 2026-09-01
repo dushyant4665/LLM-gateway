@@ -154,7 +154,7 @@ When two concurrent HTTP requests arrive for a virtual key whose remaining balan
 ## 6. Directory Structure Overview
 
 ```
-rentok/
+llm-gateway/
 ├── frontend/             # Standalone / Unified Client Dashboard
 │   ├── index.html        # UI structure
 │   ├── css/style.css     # Styling

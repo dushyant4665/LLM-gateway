@@ -1,8 +1,6 @@
-# RentOk LLM Gateway
+# LLM Gateway
 
 A minimal LLM gateway that lets clients send chat requests using virtual API keys. Each key has a budget. The gateway proxies requests to Groq, tracks token usage and cost, and falls back to a mock provider if Groq is unavailable.
-
-Built as a take-home assignment.
 
 ## Tech Stack
 
@@ -18,7 +16,7 @@ Built as a take-home assignment.
 ## Project Structure
 
 ```
-rentok/
+llm-gateway/
 ├── frontend/             # Developer console (UI)
 │   ├── index.html
 │   ├── css/style.css
@@ -78,7 +76,7 @@ cp .env.example .env
 # Copy and edit env file
 cp .env.example .env
 # In .env, set DATABASE_URL host to "db" (the Docker Compose service name):
-# DATABASE_URL="postgresql://postgres:password@db:5432/rentok_db"
+# DATABASE_URL="postgresql://postgres:password@db:5432/gateway_db"
 
 # Start PostgreSQL + app together
 docker-compose up --build

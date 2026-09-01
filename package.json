@@ -1,5 +1,5 @@
 {
-  "name": "rentok-llm-gateway",
+  "name": "llm-gateway",
   "version": "1.0.0",
   "description": "A minimal LLM Gateway backend",
   "main": "server.js",
