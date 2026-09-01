@@ -1,8 +1,6 @@
-// Minimal LLM Gateway Frontend Controller (Vanilla JS, Zero Bloat)
+// Minimal LLM Gateway Frontend Controller
 
 (function () {
-  // If frontend is served by the backend, relative paths work directly.
-  // If hosted separately (e.g. on port 5173 or another domain), update API_BASE.
   const API_BASE = window.location.origin;
 
   // DOM Elements
@@ -72,25 +70,25 @@
       }
     } catch (err) {
       healthDot.className = 'health-dot offline';
-      healthLabel.textContent = 'Unreachable';
+      healthLabel.textContent = 'Offline';
     }
   }
 
   pingHealth();
   setInterval(pingHealth, 25000);
 
-  // ── 2. Provision Virtual API Key ───────────────────────────────────────────
+  // ── 2. Create API Key ──────────────────────────────────────────────────────
   keyForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const budget = parseFloat(budgetInput.value);
 
     if (isNaN(budget) || budget <= 0) {
-      alert('Please provide a positive budget amount.');
+      alert('Please enter a positive budget amount.');
       return;
     }
 
     generateKeyBtn.disabled = true;
-    generateKeyBtn.textContent = 'Generating...';
+    generateKeyBtn.textContent = 'Creating...';
 
     try {
       const res = await fetch(`${API_BASE}/api/keys`, {
@@ -100,17 +98,17 @@
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to issue key');
+      if (!res.ok) throw new Error(data.error || 'Failed to create key');
 
       newKeyDisplay.textContent = data.key;
       newKeyPanel.classList.remove('hidden');
       applyActiveKey(data.key);
       await fetchKeyUsage(data.key);
     } catch (err) {
-      alert(`Provision error: ${err.message}`);
+      alert(`Error creating key: ${err.message}`);
     } finally {
       generateKeyBtn.disabled = false;
-      generateKeyBtn.textContent = 'Generate Key';
+      generateKeyBtn.textContent = 'Create Key';
     }
   });
 
@@ -139,7 +137,7 @@
   }
 
   function syncCurlSnippet(key) {
-    const activeKey = key || '<YOUR_VIRTUAL_KEY>';
+    const activeKey = key || '<YOUR_KEY>';
     const model = chatModelSelect ? chatModelSelect.value : 'openai/gpt-oss-20b';
 
     curlCodeSnippet.textContent = `curl -X POST ${API_BASE}/api/chat \\
@@ -147,15 +145,15 @@
   -H "Authorization: Bearer ${activeKey}" \\
   -d '{
     "model": "${model}",
-    "messages": [{"role": "user", "content": "Hello from client!"}]
+    "messages": [{"role": "user", "content": "Hello via Gateway"}]
   }'`;
   }
 
-  // ── 3. Inspect Spend & Usage ───────────────────────────────────────────────
+  // ── 3. Check Usage & Spend ─────────────────────────────────────────────────
   inspectUsageBtn.addEventListener('click', () => {
     const key = usageKeyInput.value.trim();
     if (!key) {
-      alert('Enter a virtual API key to inspect.');
+      alert('Enter an API key to check.');
       return;
     }
     fetchKeyUsage(key);
@@ -171,15 +169,15 @@
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to inspect usage');
+      if (!res.ok) throw new Error(data.error || 'Failed to fetch usage');
 
       renderUsageData(data);
       usageStatsContainer.classList.remove('hidden');
     } catch (err) {
-      alert(`Inspection failed: ${err.message}`);
+      alert(`Usage lookup failed: ${err.message}`);
     } finally {
       inspectUsageBtn.disabled = false;
-      inspectUsageBtn.textContent = 'Inspect';
+      inspectUsageBtn.textContent = 'Check Usage';
     }
   }
 
@@ -208,25 +206,25 @@
     metricOutTokens.textContent = Number(data.outputTokens || 0).toLocaleString();
   }
 
-  // ── 4. Chat Completion Proxy ───────────────────────────────────────────────
+  // ── 4. Chat Proxy ──────────────────────────────────────────────────────────
   sendRequestBtn.addEventListener('click', async () => {
     const key = chatKeyInput.value.trim();
     const model = chatModelSelect.value;
     const prompt = chatPrompt.value.trim();
 
     if (!key) {
-      alert('Virtual API Key is required.');
+      alert('API Key is required.');
       return;
     }
     if (!prompt) {
-      alert('Prompt message cannot be empty.');
+      alert('Please enter a message.');
       return;
     }
 
     sendRequestBtn.disabled = true;
     playStatusMsg.classList.remove('hidden');
     playBadges.innerHTML = '';
-    chatResponseViewer.textContent = 'Proxying through gateway...';
+    chatResponseViewer.textContent = 'Sending request...';
     telemetryBox.classList.add('hidden');
 
     const start = performance.now();
@@ -279,7 +277,7 @@
         fetchKeyUsage(key);
       }
     } catch (err) {
-      chatResponseViewer.textContent = `Client Exception: ${err.message}`;
+      chatResponseViewer.textContent = `Network error: ${err.message}`;
       playBadges.innerHTML = '<span class="badge badge-danger">Network Error</span>';
     } finally {
       sendRequestBtn.disabled = false;
