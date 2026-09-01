@@ -1,48 +1,36 @@
-# AI-LOG.md
+# AI Log
 
-## 1. Which AI tools/models were used, and for what?
-
-- **AI Tools**: Claude 3.7 Sonnet & Gemini 2.5 Flash via Antigravity / Cursor IDE.
-- **Used For**:
-  - Scaffolding the initial Express application boilerplate and Prisma database schema.
-  - Generating test suites using Node.js native test runner (`node:test`) and `supertest` with `require.cache` mocking.
-  - Designing the lightweight developer console UI (`frontend/`).
-  - Drafting system documentation and cURL usage examples.
-
----
-
-## 2. One place the AI was wrong or misleading, and how I caught it
-
-- **The Issue**: When generating the fallback resilience logic, the AI initially wrapped the Groq error catch-block and returned an HTTP `503 Service Unavailable` response with an error payload explaining that Groq failed.
-- **How I Caught It**: I reviewed Core Requirement #5 in the assignment specification: *"When the primary provider errors or times out, do something sensible: retry, fall back to a second provider or a local/mock model... your policy — defend it"*. Returning a 503 defeats the purpose of an automated fallback proxy.
-- **Correction**: I overrode the AI and replaced the error throw with `fallback.getFallbackResponse(messages)` returning an HTTP 200 response with `fallback: true` and 0 billable tokens, ensuring client resilience.
+### 1. Which AI tools/models were used, and for what?
+- **Tools**: Cursor (Claude 3.7 Sonnet) and ChatGPT.
+- **What I used them for**:
+  - Setting up the basic Express boilerplate and initial Prisma schema.
+  - Writing test cases in `tests/` using Node's built-in `node:test` runner.
+  - Building the HTML/CSS layout for the frontend console.
+  - Formatting curl commands and initial documentation drafts.
 
 ---
 
-## 3. One place I overrode the AI's suggestion, and why
-
-- **The Suggestion**: The AI suggested using Redis for sliding-window token budgeting and maintaining atomic Lua counters for balance deduction.
-- **Why I Overrode It**: Introducing Redis would add unnecessary infrastructure complexity (running another daemon, managing distributed state, handling Redis-to-Postgres synchronization) for a minimal gateway.
-- **Human Decision**: I chose to enforce single-source-of-truth budgeting directly in PostgreSQL using a conditional atomic update:
-  ```sql
-  UPDATE "ApiKey" SET spent = spent + cost WHERE id = $id AND spent <= (budget - cost)
-  ```
-  This eliminates distributed state inconsistencies while strictly honoring the budget cap.
+### 2. One place the AI was wrong or misleading, and how I caught it
+- **The mistake**: When writing the error handling for Groq API calls, the AI wrapped the catch block and returned an HTTP 503 error directly to the user when Groq failed.
+- **How I caught it**: While re-reading the assignment requirements, I noticed requirement #5 specifically asked for fallback behavior (if the primary provider fails, fall back to a mock or secondary model). A 503 error defeats the purpose of having a fallback.
+- **How I fixed it**: I removed the 503 error response and plugged in `fallback.js` instead. When Groq fails, it now returns a 200 response with `fallback: true` and 0 tokens charged.
 
 ---
 
-## 4. How I stayed in control of code I didn't type by hand
-
-- **Secrets & Credentials**: Checked `.gitignore` to ensure `.env` is never committed. Verified that only `process.env.GROQ_API_KEY` is referenced server-side in `src/lib/groq.js` and never forwarded in client responses.
-- **Budget & Guard Logic**: Stepped through `src/controllers/chat.js` and `src/services/chatService.js` line-by-line to verify:
-  1. The pre-flight `spent >= budget` check rejects before calling Groq.
-  2. Fallback responses are strictly mapped to `cost: 0` so users are never charged for degraded service.
-  3. `updateMany` conditional filtering strictly prevents overspending.
-- **Automated Unit Verification**: Ran a suite of 29 isolated unit tests covering every boundary condition (zero budget, negative budget, exact budget boundaries, missing keys, and invalid tokens).
+### 3. One place I overrode the AI's suggestion, and why
+- **The suggestion**: The AI suggested adding Redis to track token usage and rate limits in memory.
+- **Why I rejected it**: Adding Redis for a weekend take-home project would just add unnecessary setup (running another container, syncing Redis with PostgreSQL, etc.).
+- **What I did instead**: I kept all state directly in PostgreSQL. To prevent race conditions on spend updates, I used a conditional database query (`UPDATE ApiKey SET spent = spent + cost WHERE spent <= budget - cost`). It's simple, reliable, and needs zero extra infrastructure.
 
 ---
 
-## 5. Something I had to learn from scratch this weekend
+### 4. How I stayed in control of code I didn't type by hand
+- **Secrets**: I made sure `.env` was in `.gitignore` right away and verified that `GROQ_API_KEY` is only read server-side in `src/lib/groq.js`. The key is never returned in any API response or logs.
+- **Budget Logic**: I manually walked through `chatService.js` to ensure the pre-flight check (`spent >= budget`) actually blocks before calling Groq, and that fallback responses are explicitly charged $0.
+- **Testing**: I wrote and ran 29 automated unit tests covering edge cases like zero budget, negative budget, exact budget boundaries, missing keys, and invalid tokens.
 
-- **Topic**: Safe module cache interception with Node.js native `node:test` runner.
-- **How I got up to speed**: In previous projects I relied on Jest's `jest.mock()`. Since this project utilizes zero-dependency Node.js native testing (`node:test`), I researched how Node's `require.cache` resolves modules and implemented manual dependency injection stubs for Prisma and Groq before loading `src/app.js`. This resulted in instantaneous, sub-second test runs without heavy external test frameworks.
+---
+
+### 5. Something I had to learn from scratch this weekend
+- **Topic**: Mocking modules with Node's native test runner (`node:test`).
+- **How I learned it**: In past projects, I usually used Jest with `jest.mock()`. Since this project uses Node's built-in test runner without heavy test frameworks, I had to understand how Node's `require.cache` works to inject mocks for Prisma and Groq before loading `app.js`. I tested it locally step-by-step until the test suite ran reliably.
